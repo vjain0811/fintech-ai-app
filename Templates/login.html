@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AI Investment Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{font-family:Arial;background:#141e30;color:white;text-align:center}
+button,input{padding:10px;margin:5px}
+.container{background:white;color:black;padding:20px;margin:20px auto;width:500px;border-radius:10px}
+</style>
+</head>
+<body>
+
+<h1>📊 AI Investment Dashboard</h1>
+
+<div class="container">
+
+<h3>Nifty 50 Live</h3>
+<button onclick="getNifty()">Get Nifty</button>
+<p id="niftyResult"></p>
+
+<h3>Check Stock</h3>
+<input type="text" id="symbol" placeholder="Enter Symbol (e.g. TCS.BSE)">
+<button onclick="getStock()">Get Stock Data</button>
+<p id="stockResult"></p>
+
+<button onclick="getSuggestion()">Get AI Suggestion</button>
+<p id="aiResult"></p>
+
+</div>
+
+<script>
+
+function getNifty(){
+fetch("/nifty")
+.then(res=>res.json())
+.then(data=>{
+document.getElementById("niftyResult").innerText=
+JSON.stringify(data["Global Quote"],null,2);
+});
+}
+
+function getStock(){
+let symbol=document.getElementById("symbol").value;
+fetch("/stock/"+symbol)
+.then(res=>res.json())
+.then(data=>{
+document.getElementById("stockResult").innerText=
+JSON.stringify(data["Global Quote"],null,2);
+});
+}
+
+function getSuggestion(){
+let symbol=document.getElementById("symbol").value;
+fetch("/ai_suggestion/"+symbol)
+.then(res=>res.json())
+.then(data=>{
+document.getElementById("aiResult").innerText=data.suggestion;
+});
+}
+
+</script>
+
+</body>
+</html>
