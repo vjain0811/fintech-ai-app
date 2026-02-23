@@ -8,16 +8,21 @@ import openai
 import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'supersecretkey'
+
+# ================= CONFIG =================
+
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY")
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 db = SQLAlchemy(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
-ALPHA_KEY = "YOUR_ALPHA_VANTAGE_KEY"
-OPENAI_KEY = "YOUR_OPENAI_KEY"
+ALPHA_KEY = os.environ.get("ALPHA_KEY")
+OPENAI_KEY = os.environ.get("OPENAI_KEY")
 
 # ================= DATABASE MODELS =================
 
@@ -45,21 +50,28 @@ def home():
 @app.route("/login", methods=["GET","POST"])
 def login():
     if request.method == "POST":
-        user = User.query.filter_by(username=request.form["username"],
-                                     password=request.form["password"]).first()
+        user = User.query.filter_by(
+            username=request.form["username"],
+            password=request.form["password"]
+        ).first()
+
         if user:
             login_user(user)
             return redirect("/dashboard")
+
     return render_template("login.html")
 
 @app.route("/register", methods=["GET","POST"])
 def register():
     if request.method == "POST":
-        new_user = User(username=request.form["username"],
-                        password=request.form["password"])
+        new_user = User(
+            username=request.form["username"],
+            password=request.form["password"]
+        )
         db.session.add(new_user)
         db.session.commit()
         return redirect("/login")
+
     return render_template("register.html")
 
 @app.route("/logout")
@@ -74,6 +86,16 @@ def logout():
 @login_required
 def dashboard():
     return render_template("dashboard.html")
+
+# ================= NIFTY ROUTE =================
+
+@app.route("/nifty")
+@login_required
+def nifty():
+    symbol = "NIFTYBEES.BSE"
+    url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={ALPHA_KEY}"
+    data = requests.get(url).json()
+    return jsonify(data)
 
 # ================= STOCK DATA =================
 
@@ -91,6 +113,9 @@ def stock(symbol):
 def technical(symbol):
     url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={ALPHA_KEY}"
     data = requests.get(url).json()
+
+    if "Time Series (Daily)" not in data:
+        return jsonify({"error": "Invalid symbol or API limit reached"})
 
     df = pd.DataFrame(data["Time Series (Daily)"]).T
     df["close"] = df["4. close"].astype(float)
@@ -114,28 +139,35 @@ def technical(symbol):
 
 # ================= AI ANALYSIS =================
 
-@app.route("/ai/<symbol>")
+@app.route("/ai_suggestion/<symbol>")
 @login_required
-def ai(symbol):
+def ai_suggestion(symbol):
     openai.api_key = OPENAI_KEY
 
-    prompt = f"Give short investment analysis for Indian stock {symbol}"
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role":"user",
+                 "content":f"Give short investment suggestion for Indian stock {symbol}"}
+            ]
+        )
 
-    response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[{"role":"user","content":prompt}]
-    )
+        return jsonify({"analysis": response.choices[0].message.content})
 
-    return jsonify({"analysis":response.choices[0].message.content})
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 # ================= PORTFOLIO =================
 
 @app.route("/add_portfolio", methods=["POST"])
 @login_required
 def add_portfolio():
-    p = Portfolio(symbol=request.form["symbol"],
-                  quantity=request.form["quantity"],
-                  user_id=current_user.id)
+    p = Portfolio(
+        symbol=request.form["symbol"],
+        quantity=request.form["quantity"],
+        user_id=current_user.id
+    )
     db.session.add(p)
     db.session.commit()
     return redirect("/dashboard")
@@ -144,12 +176,16 @@ def add_portfolio():
 @login_required
 def portfolio():
     user_data = Portfolio.query.filter_by(user_id=current_user.id).all()
-    return jsonify([{"symbol":p.symbol,"qty":p.quantity} for p in user_data])
+    return jsonify([
+        {"symbol": p.symbol, "qty": p.quantity}
+        for p in user_data
+    ])
+
+# ================= START SERVER =================
 
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
 
-if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
