@@ -87,29 +87,22 @@ def logout():
 def dashboard():
     return render_template("dashboard.html")
 
-# ================= NIFTY ROUTE =================
+# ================= API ROUTES (NO login_required) =================
 
 @app.route("/nifty")
-@login_required
 def nifty():
     symbol = "NIFTYBEES.BSE"
     url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={ALPHA_KEY}"
     data = requests.get(url).json()
     return jsonify(data)
 
-# ================= STOCK DATA =================
-
 @app.route("/stock/<symbol>")
-@login_required
 def stock(symbol):
     url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={ALPHA_KEY}"
     data = requests.get(url).json()
     return jsonify(data)
 
-# ================= TECHNICAL INDICATORS =================
-
 @app.route("/technical/<symbol>")
-@login_required
 def technical(symbol):
     url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={ALPHA_KEY}"
     data = requests.get(url).json()
@@ -137,10 +130,7 @@ def technical(symbol):
         "MACD": round(macd.iloc[-1],2)
     })
 
-# ================= AI ANALYSIS =================
-
 @app.route("/ai_suggestion/<symbol>")
-@login_required
 def ai_suggestion(symbol):
     openai.api_key = OPENAI_KEY
 
