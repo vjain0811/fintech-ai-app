@@ -1,64 +1,132 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>AI Investment Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-body{font-family:Arial;background:#141e30;color:white;text-align:center}
-button,input{padding:10px;margin:5px}
-.container{background:white;color:black;padding:20px;margin:20px auto;width:500px;border-radius:10px}
-</style>
+    <title>AI Investment Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0f1c2e;
+            color: white;
+            text-align: center;
+        }
+
+        .card {
+            background: #f2f2f2;
+            color: black;
+            width: 500px;
+            margin: 40px auto;
+            padding: 30px;
+            border-radius: 10px;
+        }
+
+        input {
+            padding: 8px;
+            width: 200px;
+        }
+
+        button {
+            padding: 8px 12px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        .result {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
 
-<h1>📊 AI Investment Dashboard</h1>
+    <h1>📊 AI Investment Dashboard</h1>
 
-<div class="container">
+    <div class="card">
 
-<h3>Nifty 50 Live</h3>
-<button onclick="getNifty()">Get Nifty</button>
-<p id="niftyResult"></p>
+        <h2>Nifty 50 Live</h2>
+        <button onclick="getNifty()">Get Nifty</button>
+        <div id="niftyResult" class="result"></div>
 
-<h3>Check Stock</h3>
-<input type="text" id="symbol" placeholder="Enter Symbol (e.g. TCS.BSE)">
-<button onclick="getStock()">Get Stock Data</button>
-<p id="stockResult"></p>
+        <hr>
 
-<button onclick="getSuggestion()">Get AI Suggestion</button>
-<p id="aiResult"></p>
+        <h2>Check Stock</h2>
+        <input type="text" id="symbolInput" placeholder="Enter Symbol (TCS.BSE)">
+        <button onclick="getStock()">Get Stock Data</button>
+        <div id="stockResult" class="result"></div>
 
-</div>
+        <button onclick="getTechnical()">Get Technical Indicators</button>
+        <div id="technicalResult" class="result"></div>
+
+        <button onclick="getAI()">Get AI Suggestion</button>
+        <div id="aiResult" class="result"></div>
+
+    </div>
 
 <script>
+async function getNifty() {
+    document.getElementById("niftyResult").innerText = "Loading...";
+    const res = await fetch("/nifty");
+    const data = await res.json();
 
-function getNifty(){
-fetch("/nifty")
-.then(res=>res.json())
-.then(data=>{
-document.getElementById("niftyResult").innerText=
-JSON.stringify(data["Global Quote"],null,2);
-});
+    if (data["Global Quote"]) {
+        const price = data["Global Quote"]["05. price"];
+        document.getElementById("niftyResult").innerText =
+            "Nifty Price: ₹ " + price;
+    } else {
+        document.getElementById("niftyResult").innerText =
+            "Error fetching Nifty data (API limit?)";
+    }
 }
 
-function getStock(){
-let symbol=document.getElementById("symbol").value;
-fetch("/stock/"+symbol)
-.then(res=>res.json())
-.then(data=>{
-document.getElementById("stockResult").innerText=
-JSON.stringify(data["Global Quote"],null,2);
-});
+async function getStock() {
+    const symbol = document.getElementById("symbolInput").value;
+    document.getElementById("stockResult").innerText = "Loading...";
+
+    const res = await fetch("/stock/" + symbol);
+    const data = await res.json();
+
+    if (data["Time Series (Daily)"]) {
+        const latestDate = Object.keys(data["Time Series (Daily)"])[0];
+        const latestPrice =
+            data["Time Series (Daily)"][latestDate]["4. close"];
+
+        document.getElementById("stockResult").innerText =
+            "Latest Close Price: ₹ " + latestPrice;
+    } else {
+        document.getElementById("stockResult").innerText =
+            "Error fetching stock data (Check symbol or API limit)";
+    }
 }
 
-function getSuggestion(){
-let symbol=document.getElementById("symbol").value;
-fetch("/ai_suggestion/"+symbol)
-.then(res=>res.json())
-.then(data=>{
-document.getElementById("aiResult").innerText=data.suggestion;
-});
+async function getTechnical() {
+    const symbol = document.getElementById("symbolInput").value;
+    document.getElementById("technicalResult").innerText = "Loading...";
+
+    const res = await fetch("/technical/" + symbol);
+    const data = await res.json();
+
+    if (data.RSI) {
+        document.getElementById("technicalResult").innerText =
+            "RSI: " + data.RSI + " | MACD: " + data.MACD;
+    } else {
+        document.getElementById("technicalResult").innerText =
+            "Error calculating indicators";
+    }
 }
 
+async function getAI() {
+    const symbol = document.getElementById("symbolInput").value;
+    document.getElementById("aiResult").innerText = "Thinking...";
+
+    const res = await fetch("/ai_suggestion/" + symbol);
+    const data = await res.json();
+
+    if (data.analysis) {
+        document.getElementById("aiResult").innerText = data.analysis;
+    } else {
+        document.getElementById("aiResult").innerText =
+            "AI suggestion unavailable";
+    }
+}
 </script>
 
 </body>
