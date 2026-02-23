@@ -13,7 +13,7 @@
         .card {
             background: #f2f2f2;
             color: black;
-            width: 500px;
+            width: 550px;
             margin: 40px auto;
             padding: 30px;
             border-radius: 10px;
@@ -21,11 +21,12 @@
 
         input {
             padding: 8px;
-            width: 200px;
+            width: 250px;
+            margin: 5px;
         }
 
         button {
-            padding: 8px 12px;
+            padding: 8px 14px;
             margin: 5px;
             cursor: pointer;
         }
@@ -33,6 +34,11 @@
         .result {
             margin-top: 15px;
             font-weight: bold;
+            min-height: 20px;
+        }
+
+        hr {
+            margin: 25px 0;
         }
     </style>
 </head>
@@ -50,83 +56,140 @@
 
         <h2>Check Stock</h2>
         <input type="text" id="symbolInput" placeholder="Enter Symbol (TCS.BSE)">
+        <br>
         <button onclick="getStock()">Get Stock Data</button>
-        <div id="stockResult" class="result"></div>
-
         <button onclick="getTechnical()">Get Technical Indicators</button>
-        <div id="technicalResult" class="result"></div>
-
         <button onclick="getAI()">Get AI Suggestion</button>
+
+        <div id="stockResult" class="result"></div>
+        <div id="technicalResult" class="result"></div>
         <div id="aiResult" class="result"></div>
 
     </div>
 
 <script>
+
+// ================= NIFTY =================
 async function getNifty() {
     document.getElementById("niftyResult").innerText = "Loading...";
-    const res = await fetch("/nifty");
-    const data = await res.json();
 
-    if (data["Global Quote"]) {
-        const price = data["Global Quote"]["05. price"];
+    try {
+        const res = await fetch("/nifty");
+        const data = await res.json();
+
+        if (data["Global Quote"]) {
+            const price = data["Global Quote"]["05. price"];
+            document.getElementById("niftyResult").innerText =
+                "Nifty Price: ₹ " + price;
+        } else {
+            document.getElementById("niftyResult").innerText =
+                "Error fetching Nifty data (API limit?)";
+        }
+    } catch (error) {
         document.getElementById("niftyResult").innerText =
-            "Nifty Price: ₹ " + price;
-    } else {
-        document.getElementById("niftyResult").innerText =
-            "Error fetching Nifty data (API limit?)";
+            "Server error fetching Nifty";
     }
 }
 
+
+// ================= STOCK =================
 async function getStock() {
-    const symbol = document.getElementById("symbolInput").value;
+
+    const symbol = document.getElementById("symbolInput").value.trim();
+
+    if (!symbol) {
+        document.getElementById("stockResult").innerText =
+            "Please enter a stock symbol (Example: TCS.BSE)";
+        return;
+    }
+
     document.getElementById("stockResult").innerText = "Loading...";
 
-    const res = await fetch("/stock/" + symbol);
-    const data = await res.json();
+    try {
+        const res = await fetch("/stock/" + symbol);
+        const data = await res.json();
 
-    if (data["Time Series (Daily)"]) {
-        const latestDate = Object.keys(data["Time Series (Daily)"])[0];
-        const latestPrice =
-            data["Time Series (Daily)"][latestDate]["4. close"];
+        if (data["Time Series (Daily)"]) {
+            const latestDate = Object.keys(data["Time Series (Daily)"])[0];
+            const latestPrice =
+                data["Time Series (Daily)"][latestDate]["4. close"];
 
+            document.getElementById("stockResult").innerText =
+                "Latest Close Price: ₹ " + latestPrice;
+        } else {
+            document.getElementById("stockResult").innerText =
+                "Invalid symbol or API limit reached";
+        }
+
+    } catch (error) {
         document.getElementById("stockResult").innerText =
-            "Latest Close Price: ₹ " + latestPrice;
-    } else {
-        document.getElementById("stockResult").innerText =
-            "Error fetching stock data (Check symbol or API limit)";
+            "Server error fetching stock";
     }
 }
 
+
+// ================= TECHNICAL =================
 async function getTechnical() {
-    const symbol = document.getElementById("symbolInput").value;
+
+    const symbol = document.getElementById("symbolInput").value.trim();
+
+    if (!symbol) {
+        document.getElementById("technicalResult").innerText =
+            "Enter symbol first";
+        return;
+    }
+
     document.getElementById("technicalResult").innerText = "Loading...";
 
-    const res = await fetch("/technical/" + symbol);
-    const data = await res.json();
+    try {
+        const res = await fetch("/technical/" + symbol);
+        const data = await res.json();
 
-    if (data.RSI) {
+        if (data.RSI !== undefined) {
+            document.getElementById("technicalResult").innerText =
+                "RSI: " + data.RSI + " | MACD: " + data.MACD;
+        } else {
+            document.getElementById("technicalResult").innerText =
+                "Error calculating indicators";
+        }
+
+    } catch (error) {
         document.getElementById("technicalResult").innerText =
-            "RSI: " + data.RSI + " | MACD: " + data.MACD;
-    } else {
-        document.getElementById("technicalResult").innerText =
-            "Error calculating indicators";
+            "Server error fetching indicators";
     }
 }
 
+
+// ================= AI =================
 async function getAI() {
-    const symbol = document.getElementById("symbolInput").value;
+
+    const symbol = document.getElementById("symbolInput").value.trim();
+
+    if (!symbol) {
+        document.getElementById("aiResult").innerText =
+            "Enter symbol first";
+        return;
+    }
+
     document.getElementById("aiResult").innerText = "Thinking...";
 
-    const res = await fetch("/ai_suggestion/" + symbol);
-    const data = await res.json();
+    try {
+        const res = await fetch("/ai_suggestion/" + symbol);
+        const data = await res.json();
 
-    if (data.analysis) {
-        document.getElementById("aiResult").innerText = data.analysis;
-    } else {
+        if (data.analysis) {
+            document.getElementById("aiResult").innerText = data.analysis;
+        } else {
+            document.getElementById("aiResult").innerText =
+                "AI suggestion unavailable";
+        }
+
+    } catch (error) {
         document.getElementById("aiResult").innerText =
-            "AI suggestion unavailable";
+            "Server error from AI";
     }
 }
+
 </script>
 
 </body>
